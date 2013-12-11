@@ -98,6 +98,30 @@ class Heroku::Command::Pg < Heroku::Command::Base
     puts
   end
 
+  # pg:changeover DATABASE
+  #
+  # Schedule a changeover for DATABASE (see https://devcenter.heroku.com/articles/heroku-postgres-follower-databases#database-upgrades-and-migrations-with-changeovers )
+  #
+  #   --at TIME   # perform the changeover at indicated time if possible (or later otherwise)
+  def changeover
+    unless db = shift_argument
+      error("Usage: heroku pg:changeover DATABASE\nMust specify DATABASE to schedule changeover.")
+    end
+    validate_arguments!
+
+    resolver = generate_resolver
+    target = resolver.resolve(db)
+    @app = resolver.app_name if @app.nil?
+
+    changeover_time = options[:at]
+
+    changeover_status = hpg_client(target).changeover(changeover_time)
+    if changeover_status[:error]
+      output_with_bang(changeover_status[:error])
+    else
+      output_with_bang(changeover_status[:message])
+    end
+  end
 
   # pg:upgrade REPLICA
   #
